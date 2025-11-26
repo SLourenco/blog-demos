@@ -18,7 +18,7 @@ struct DB {
 type AppState = Arc<Mutex<DB>>;
 
 #[post("/delivery", data = "<body>")]
-fn payment(db: &State<AppState>, body: Json<DeliveryRequest>) -> String {
+fn delivery(db: &State<AppState>, body: Json<DeliveryRequest>) -> String {
     let data = &mut db.lock().unwrap().data;
     let id = Uuid::new_v4();
     let eta = chrono::offset::Local::now()
@@ -46,5 +46,5 @@ fn rocket() -> _ {
         .manage(Arc::new(Mutex::new(DB {
             data: HashMap::<String, DeliveryRequest>::new(),
         })))
-        .mount("/", routes![payment])
+        .mount("/", routes![delivery])
 }
