@@ -87,3 +87,27 @@ fn rocket() -> _ {
         })))
         .mount("/", routes![order])
 }
+
+trait Process {
+    fn prepare(&self) -> bool;
+    fn commit(&self);
+}
+
+struct Coordinator {
+    processes: Vec<&'static dyn Process>,
+}
+
+impl Coordinator {
+    fn process_order(&self) {
+        let mut ok = true;
+        for process in self.processes.iter() {
+            ok =  ok && process.prepare();
+        }
+
+        if (ok) {
+            for process in self.processes.iter() {
+                process.commit()
+            }
+        }
+    }
+}

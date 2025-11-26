@@ -7,44 +7,70 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
 struct DeliveryRequest {
+    address: String
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct DeliveryResponse {
+    id: String,
     address: String,
-    date: Option<String>,
+    date: String
 }
 
 struct DB {
-    data: HashMap<String, DeliveryRequest>,
+    data: HashMap<String, DeliveryResponse>,
+    confirmed: Vec<String>
 }
 
 type AppState = Arc<Mutex<DB>>;
 
-#[post("/delivery", data = "<body>")]
-fn delivery(db: &State<AppState>, body: Json<DeliveryRequest>) -> String {
+#[post("/schedule", data = "<body>")]
+fn delivery(db: &State<AppState>, body: Json<DeliveryRequest>) -> Json<DeliveryResponse> {
     let data = &mut db.lock().unwrap().data;
     let id = Uuid::new_v4();
     let eta = chrono::offset::Local::now()
         .checked_add_days(chrono::Days::new(5))
         .unwrap();
+    let response = DeliveryResponse {
+        address: body.address.clone(),
+        date: eta.to_rfc2822(),
+        id: id.to_string()
+    };
     data.insert(
         id.to_string(),
-        DeliveryRequest {
-            address: body.address.clone(),
-            date: Some(eta.to_rfc2822()),
-        },
+        response.clone(),
     );
-    format!(
-        "Delivery ID: {}, ETA: {}, (Address: {})",
+    Json(response)
+}
+
+#[post("/confirm/<id>")]
+fn confirm(db: &State<AppState>, id: &str) -> Json<DeliveryResponse> {
+    let db = &mut db.lock().unwrap();
+    let schedule = db.data.get(id).expect("unexpected");
+    let eta = chrono::offset::Local::now()
+        .checked_add_days(chrono::Days::new(5))
+        .unwrap();
+
+    let response = DeliveryResponse {
+        address: schedule.address.clone(),
+        date: eta.to_rfc2822(),
+        id: id.to_string()
+    };
+    db.confirmed.push(id.to_string());
+    db.data.insert(
         id.to_string(),
-        eta.to_rfc2822(),
-        body.address
-    )
+        response.clone(),
+    );
+    Json(response)
 }
 
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .configure(rocket::Config::figment().merge(("port", 8070)))
+        .configure(rocket::Config::figment().merge(("port", 7070)))
         .manage(Arc::new(Mutex::new(DB {
-            data: HashMap::<String, DeliveryRequest>::new(),
+            data: HashMap::<String, DeliveryResponse>::new(),
+            confirmed: Vec::new()
         })))
-        .mount("/", routes![delivery])
+        .mount("/", routes![delivery, confirm])
 }
