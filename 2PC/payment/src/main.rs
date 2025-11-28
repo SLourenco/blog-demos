@@ -13,6 +13,11 @@ struct PaymentRequest {
     value: usize
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+struct PaymentResponse {
+    id: String,
+}
+
 struct DB {
     data: HashMap<String, PaymentRequest>
 }
@@ -20,12 +25,13 @@ struct DB {
 type AppState = Arc<Mutex<DB>>;
 
 #[post("/payment", data = "<body>")]
-fn payment(db: &State<AppState>, body: Json<PaymentRequest>) -> String {
+fn payment(db: &State<AppState>, body: Json<PaymentRequest>) -> Json<PaymentResponse> {
     let data = &mut db.lock().unwrap().data;
     let id = Uuid::new_v4();
     // This could be a call to some 3rd party provider, to charge the value
     data.insert(id.to_string(), PaymentRequest{account: body.account, value: body.value});
-    format!("Payment ID: {}, (Acc: {}, Value: {})", id.to_string(), body.account, body.value)
+    println!("Payment ID: {}, (Acc: {}, Value: {})", id.to_string(), body.account, body.value);
+    Json(PaymentResponse{id: id.to_string()})
 }
 
 #[post("/payment/<id>/reversal")]

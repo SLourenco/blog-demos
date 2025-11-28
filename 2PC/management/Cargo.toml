@@ -8,4 +8,5 @@ rocket = { version = "0.5.1", features = ["json"] }
 serde = "1.0.228"
 uuid = { version = "1.18.1", features = ["v4"] }
 reqwest = { version = "0.12.24", features = ["blocking", "json"]}
+async-trait = "0.1.89"
 
