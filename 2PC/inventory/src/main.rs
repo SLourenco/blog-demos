@@ -21,7 +21,7 @@ struct Response {
 
 struct DB {
     inventory: HashMap<String, usize>,
-    reservations: HashMap<String, usize>,
+    reservations: HashMap<String, (String, usize)>,
 }
 
 type AppState = Arc<Mutex<DB>>;
@@ -41,8 +41,8 @@ fn reserve(db: &State<AppState>, id: &str, qty: Json<Message>) -> Json<Response>
             )),
         })
     } else {
-        db.reservations.insert(String::from(id), qty.quantity);
-        db.inventory.insert(reservation_id.to_string(), existing_qty - qty.quantity);
+        db.reservations.insert(reservation_id.to_string(), (id.to_string(), qty.quantity));
+        db.inventory.insert(id.to_string(), existing_qty - qty.quantity);
         Json(Response {
             id: reservation_id.to_string(),
             error: None,
@@ -54,6 +54,14 @@ fn reserve(db: &State<AppState>, id: &str, qty: Json<Message>) -> Json<Response>
 fn commit(db: &State<AppState>, id: &str) {
     let reservations = &mut db.lock().unwrap().reservations;
     reservations.remove(id);
+}
+
+#[post("/rollback/<id>")]
+fn rollback(db: &State<AppState>, id: &str) {
+    let mut data = db.lock().unwrap();
+    let (reservation, qty) = data.reservations.get(id).expect("invalid rollback id").clone();
+    let existing_qty = data.inventory.get(&reservation).expect("invalid rollback id").clone();
+    data.inventory.insert(reservation, existing_qty + qty);
 }
 
 #[put("/refill/<id>", data = "<qty>")]
@@ -70,7 +78,7 @@ fn rocket() -> _ {
         .configure(rocket::Config::figment().merge(("port", 7050)))
         .manage(Arc::new(Mutex::new(DB {
             inventory: HashMap::<String, usize>::new(),
-            reservations: HashMap::<String, usize>::new(),
+            reservations: HashMap::<String, (String, usize)>::new(),
         })))
-        .mount("/", routes![reserve, commit, refill])
+        .mount("/", routes![reserve, commit, refill, rollback])
 }

@@ -60,7 +60,14 @@ impl Process for InventoryClient {
     }
 
     async fn rollback(&self, id: String) {
-        todo!()
+        self.client
+            .post(format!(
+                "{}/rollback/{}",
+                self.base_url,
+                id
+            ))
+            .send()
+            .await.expect("Unexpected rollback error");
     }
 }
 
@@ -114,7 +121,14 @@ impl Process for DeliveryClient {
     }
 
     async fn rollback(&self, id: String) {
-        todo!()
+        self.client
+            .post(format!(
+                "{}/rollback/{}",
+                self.base_url,
+                id
+            ))
+            .send()
+            .await.expect("Unexpected rollback error");
     }
 }
 
@@ -163,6 +177,13 @@ impl Process for PaymentClient {
     }
 
     async fn rollback(&self, id: String) {
-        todo!()
+        self.client
+            .post(format!(
+                "{}/payment/{}/reversal",
+                self.base_url,
+                id
+            ))
+            .send()
+            .await.expect("Unexpected rollback error");
     }
 }

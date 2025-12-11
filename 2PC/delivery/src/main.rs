@@ -64,6 +64,12 @@ fn confirm(db: &State<AppState>, id: &str) -> Json<DeliveryResponse> {
     Json(response)
 }
 
+#[post("/rollback/<id>")]
+fn rollback(db: &State<AppState>, id: &str) {
+    let db = &mut db.lock().unwrap();
+    db.data.remove(id);
+}
+
 #[launch]
 fn rocket() -> _ {
     rocket::build()
@@ -72,5 +78,5 @@ fn rocket() -> _ {
             data: HashMap::<String, DeliveryResponse>::new(),
             confirmed: Vec::new()
         })))
-        .mount("/", routes![delivery, confirm])
+        .mount("/", routes![delivery, confirm, rollback])
 }
